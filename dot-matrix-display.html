@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dot-Matrix LED Display</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08080a;
+    --panel:#0e0e12;
+    --panel-2:#15151b;
+    --ink:#e9e6df;
+    --dim:#8b8780;
+    --line:#23232b;
+    --amber:#ffb000;
+    --teal:#00e5d0;
+    --rad:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1200px 800px at 80% -10%, #131319 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column;
+    min-height:100%;
+  }
+  header{
+    padding:18px 22px 6px;
+  }
+  header h1{
+    font-family:"Cormorant Garamond",serif;
+    font-weight:600; font-size:26px; letter-spacing:.3px; margin:0;
+  }
+  header p{ color:var(--dim); font-size:12px; margin:4px 0 0; letter-spacing:.2px }
+  header em{ color:var(--teal); font-style:italic }
+
+  main{
+    flex:1; display:grid; gap:18px; padding:14px 18px 28px;
+    grid-template-columns:1fr;
+  }
+  @media(min-width:900px){
+    main{ grid-template-columns:1fr 340px; align-items:start }
+  }
+
+  /* ---- display stage / bezel ---- */
+  .stage-wrap{ position:relative }
+  .bezel{
+    position:relative;
+    border-radius:14px;
+    padding:22px;
+    background:linear-gradient(145deg,#121216,#070708);
+    box-shadow:
+      inset 0 1px 0 #2a2a32,
+      inset 0 0 0 1px #000,
+      0 24px 60px -20px #000,
+      0 2px 0 #1c1c22;
+    overflow:hidden;
+  }
+  .bezel::before{ /* faint plastic sheen */
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(120deg, rgba(255,255,255,.05), transparent 30%);
+    mix-blend-mode:screen;
+  }
+  #screen{
+    display:block; width:100%; height:auto; border-radius:6px;
+    image-rendering:auto;
+  }
+  .stage-foot{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    margin-top:12px; color:var(--dim); font-size:11px;
+  }
+  .seg{ display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden }
+  .seg button{
+    background:transparent; color:var(--dim); border:0; padding:8px 14px;
+    font:500 12px/1 "JetBrains Mono",monospace; cursor:pointer; letter-spacing:.4px;
+  }
+  .seg button[aria-pressed="true"]{ background:var(--panel-2); color:var(--ink) }
+  .mini{
+    background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:8px 12px; font:500 12px "JetBrains Mono",monospace; cursor:pointer;
+  }
+  .mini:hover{ border-color:#33333d }
+
+  /* ---- controls ---- */
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--rad);
+    padding:16px; position:sticky; top:14px;
+  }
+  .group{ margin-bottom:18px }
+  .group:last-child{ margin-bottom:0 }
+  .group > h3{
+    font-family:"Cormorant Garamond",serif; font-style:italic; font-weight:600;
+    font-size:16px; margin:0 0 10px; color:var(--ink);
+    border-bottom:1px solid var(--line); padding-bottom:6px;
+  }
+  .row{ display:flex; align-items:center; gap:10px; margin:9px 0 }
+  .row label{ flex:0 0 118px; font-size:11px; color:var(--dim); letter-spacing:.2px }
+  .row .val{ flex:0 0 42px; text-align:right; font-size:11px; color:var(--amber); font-variant-numeric:tabular-nums }
+  input[type=range]{
+    flex:1; -webkit-appearance:none; appearance:none; height:3px; border-radius:3px;
+    background:linear-gradient(90deg,var(--teal),#1d3b3a); outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+    background:var(--ink); border:2px solid #000; cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px; height:14px; border-radius:50%; background:var(--ink); border:2px solid #000; cursor:pointer;
+  }
+  input[type=text]{
+    flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--ink);
+    border-radius:8px; padding:9px 11px; font:500 13px "JetBrains Mono",monospace; letter-spacing:1px;
+  }
+  input[type=color]{
+    width:34px; height:28px; padding:0; border:1px solid var(--line); border-radius:7px;
+    background:var(--panel-2); cursor:pointer;
+  }
+  .swatches{ display:flex; gap:7px; flex-wrap:wrap; margin-top:8px }
+  .swatches button{
+    width:26px; height:26px; border-radius:50%; border:1px solid #0008; cursor:pointer;
+    box-shadow:0 0 8px currentColor;
+  }
+  .chk{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--dim); margin:9px 0 }
+  .chk input{ accent-color:var(--teal) }
+  .foot-note{ color:var(--dim); font-size:10.5px; line-height:1.5; margin-top:4px }
+  .preset-row{ display:flex; gap:7px; flex-wrap:wrap }
+  .preset-row .mini{ flex:1; min-width:0; padding:8px 6px; text-align:center }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dot-Matrix LED Display</h1>
+  <p>Round-pixel LED matrix · hot core · halo bloom · <em>lived-in</em> grid</p>
+</header>
+
+<main>
+  <div class="stage-wrap">
+    <div class="bezel">
+      <canvas id="screen"></canvas>
+    </div>
+    <div class="stage-foot">
+      <div class="seg" id="modeSeg">
+        <button data-mode="clock" aria-pressed="true">CLOCK</button>
+        <button data-mode="stopwatch" aria-pressed="false">STOPWATCH</button>
+        <button data-mode="text" aria-pressed="false">TEXT</button>
+      </div>
+      <button class="mini" id="swStart" hidden>START</button>
+      <button class="mini" id="swReset" hidden>RESET</button>
+      <span id="hint">live time · HH:MM</span>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <div class="group" id="textGroup" style="display:none">
+      <h3>content</h3>
+      <div class="row"><input type="text" id="text" value="HELLO" maxlength="24" placeholder="TYPE…"></div>
+      <div class="chk"><input type="checkbox" id="secs"><label for="secs" style="flex:1;cursor:pointer">show seconds (clock)</label></div>
+      <div class="chk"><input type="checkbox" id="h12"><label for="h12" style="flex:1;cursor:pointer">12-hour clock</label></div>
+    </div>
+
+    <div class="group">
+      <h3>geometry</h3>
+      <div class="row"><label>dot pitch</label><input type="range" id="pitch" min="6" max="40" step="1" value="16"><span class="val" id="pitch_v"></span></div>
+      <div class="row"><label>dot fill</label><input type="range" id="fill" min="20" max="62" step="1" value="44"><span class="val" id="fill_v"></span></div>
+      <div class="chk"><input type="checkbox" id="square"><label for="square" style="flex:1;cursor:pointer">square pixels</label></div>
+    </div>
+
+    <div class="group">
+      <h3>color</h3>
+      <div class="row"><label>LED color</label><input type="color" id="color" value="#dfe9ff"><span style="flex:1"></span></div>
+      <div class="row"><label>background</label><input type="color" id="bg" value="#070708"><span style="flex:1"></span></div>
+      <div class="swatches" id="swatches"></div>
+    </div>
+
+    <div class="group">
+      <h3>hot core</h3>
+      <div class="row"><label>whiteness</label><input type="range" id="coreWhite" min="0" max="100" step="1" value="78"><span class="val" id="coreWhite_v"></span></div>
+      <div class="row"><label>core size</label><input type="range" id="coreSize" min="0" max="80" step="1" value="42"><span class="val" id="coreSize_v"></span></div>
+      <div class="row"><label>intensity</label><input type="range" id="coreInt" min="0" max="100" step="1" value="85"><span class="val" id="coreInt_v"></span></div>
+    </div>
+
+    <div class="group">
+      <h3>halo / bloom</h3>
+      <div class="row"><label>spread</label><input type="range" id="bloomBlur" min="0" max="40" step="1" value="14"><span class="val" id="bloomBlur_v"></span></div>
+      <div class="row"><label>intensity</label><input type="range" id="bloomInt" min="0" max="100" step="1" value="55"><span class="val" id="bloomInt_v"></span></div>
+    </div>
+
+    <div class="group">
+      <h3>lived-in</h3>
+      <div class="row"><label>off-dot grid</label><input type="range" id="offGrid" min="0" max="100" step="1" value="22"><span class="val" id="offGrid_v"></span></div>
+      <div class="row"><label>dot variance</label><input type="range" id="variance" min="0" max="100" step="1" value="30"><span class="val" id="variance_v"></span></div>
+      <div class="row"><label>weak dots</label><input type="range" id="dead" min="0" max="30" step="1" value="5"><span class="val" id="dead_v"></span></div>
+      <div class="row"><label>flicker</label><input type="range" id="flicker" min="0" max="100" step="1" value="18"><span class="val" id="flicker_v"></span></div>
+      <div class="row"><label>vignette</label><input type="range" id="vignette" min="0" max="100" step="1" value="45"><span class="val" id="vignette_v"></span></div>
+      <p class="foot-note">Variance + weak dots are seeded per pixel, so the &ldquo;wear&rdquo; stays consistent. Flicker animates a few pixels each frame.</p>
+    </div>
+
+    <div class="group">
+      <h3>presets</h3>
+      <div class="preset-row">
+        <button class="mini" data-preset="photo">Macro</button>
+        <button class="mini" data-preset="clean">Clean</button>
+        <button class="mini" data-preset="alarm">Alarm</button>
+        <button class="mini" data-preset="depot">Depot</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script>
+/* ============================================================
+   5x7 dot-matrix font  (rows top→bottom, '1' = lit)
+   ============================================================ */
+const F = {
+  '0':["01110","10001","10011","10101","11001","10001","01110"],
+  '1':["00100","01100","00100","00100","00100","00100","01110"],
+  '2':["01110","10001","00001","00010","00100","01000","11111"],
+  '3':["11111","00010","00100","00010","00001","10001","01110"],
+  '4':["00010","00110","01010","10010","11111","00010","00010"],
+  '5':["11111","10000","11110","00001","00001","10001","01110"],
+  '6':["00110","01000","10000","11110","10001","10001","01110"],
+  '7':["11111","00001","00010","00100","01000","01000","01000"],
+  '8':["01110","10001","10001","01110","10001","10001","01110"],
+  '9':["01110","10001","10001","01111","00001","00010","01100"],
+  ':':["00000","00100","00100","00000","00100","00100","00000"],
+  '.':["00000","00000","00000","00000","00000","00000","00100"],
+  '-':["00000","00000","00000","11111","00000","00000","00000"],
+  '/':["00001","00010","00010","00100","01000","01000","10000"],
+  '?':["01110","10001","00001","00010","00100","00000","00100"],
+  '!':["00100","00100","00100","00100","00100","00000","00100"],
+  ' ':["00000","00000","00000","00000","00000","00000","00000"],
+  'A':["01110","10001","10001","11111","10001","10001","10001"],
+  'B':["11110","10001","10001","11110","10001","10001","11110"],
+  'C':["01110","10001","10000","10000","10000","10001","01110"],
+  'D':["11100","10010","10001","10001","10001","10010","11100"],
+  'E':["11111","10000","10000","11110","10000","10000","11111"],
+  'F':["11111","10000","10000","11110","10000","10000","10000"],
+  'G':["01110","10001","10000","10111","10001","10001","01111"],
+  'H':["10001","10001","10001","11111","10001","10001","10001"],
+  'I':["01110","00100","00100","00100","00100","00100","01110"],
+  'J':["00111","00010","00010","00010","00010","10010","01100"],
+  'K':["10001","10010","10100","11000","10100","10010","10001"],
+  'L':["10000","10000","10000","10000","10000","10000","11111"],
+  'M':["10001","11011","10101","10101","10001","10001","10001"],
+  'N':["10001","11001","10101","10011","10001","10001","10001"],
+  'O':["01110","10001","10001","10001","10001","10001","01110"],
+  'P':["11110","10001","10001","11110","10000","10000","10000"],
+  'Q':["01110","10001","10001","10001","10101","10010","01101"],
+  'R':["11110","10001","10001","11110","10100","10010","10001"],
+  'S':["01111","10000","10000","01110","00001","00001","11110"],
+  'T':["11111","00100","00100","00100","00100","00100","00100"],
+  'U':["10001","10001","10001","10001","10001","10001","01110"],
+  'V':["10001","10001","10001","10001","10001","01010","00100"],
+  'W':["10001","10001","10001","10101","10101","11011","10001"],
+  'X':["10001","10001","01010","00100","01010","10001","10001"],
+  'Y':["10001","10001","01010","00100","00100","00100","00100"],
+  'Z':["11111","00001","00010","00100","01000","10000","11111"]
+};
+const GW = 5, GH = 7, GAP = 1, PAD = 2; // glyph w/h, inter-char gap, border padding (in dots)
+
+/* ============================================================
+   State
+   ============================================================ */
+const cv = document.getElementById('screen');
+const ctx = cv.getContext('2d');
+const glow = document.createElement('canvas');
+const gx = glow.getContext('2d');
+
+const state = {
+  mode:'clock', text:'HELLO', secs:false, h12:false,
+  pitch:16, fill:44, square:false,
+  color:'#dfe9ff', bg:'#070708',
+  coreWhite:78, coreSize:42, coreInt:85,
+  bloomBlur:14, bloomInt:55,
+  offGrid:22, variance:30, dead:5, flicker:18, vignette:45
+};
+
+let sw = { running:false, base:0, acc:0 };
+
+/* ---- helpers ---- */
+const hex2rgb = h => { h=h.replace('#',''); if(h.length===3)h=h.split('').map(c=>c+c).join(''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; };
+const mix = (a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+const rgba = (c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+// deterministic per-pixel pseudo-random in [0,1)
+function hash(x,y){ let n=(x*374761393)^(y*668265263); n=(n^(n>>>13))*1274126177; return ((n^(n>>>16))>>>0)/4294967296; }
+
+/* ============================================================
+   Build the lit/unlit grid for a string
+   ============================================================ */
+function buildGrid(str){
+  const chars=[...str];
+  const glyphs=chars.map(c=>F[c.toUpperCase()]||F['?']);
+  let cols=0; glyphs.forEach((g,i)=>{cols+=GW; if(i<glyphs.length-1)cols+=GAP;});
+  if(cols===0)cols=GW;
+  const rows=GH;
+  const grid=[];
+  for(let r=0;r<rows;r++){
+    const line=[];
+    glyphs.forEach((g,gi)=>{
+      const s=g[r];
+      for(let c=0;c<GW;c++)line.push(s[c]==='1'?1:0);
+      if(gi<glyphs.length-1)line.push(0);
+    });
+    grid.push(line);
+  }
+  return grid;
+}
+
+/* ============================================================
+   What string to render this frame
+   ============================================================ */
+function currentString(t){
+  if(state.mode==='text') return state.text||' ';
+  if(state.mode==='clock'){
+    const d=new Date(); let h=d.getHours();
+    if(state.h12){ h=h%12||12; }
+    const pad=n=>String(n).padStart(2,'0');
+    let s=pad(h)+':'+pad(d.getMinutes());
+    if(state.secs) s+=':'+pad(d.getSeconds());
+    return s;
+  }
+  // stopwatch
+  let ms=sw.acc+(sw.running?(t-sw.base):0);
+  ms=Math.max(0,ms);
+  const cs=Math.floor(ms/10)%100;
+  const sec=Math.floor(ms/1000)%60;
+  const min=Math.floor(ms/60000)%60;
+  const hr=Math.floor(ms/3600000);
+  const pad=n=>String(n).padStart(2,'0');
+  return (hr>0?pad(hr)+':':'')+pad(min)+':'+pad(sec)+'.'+pad(cs);
+}
+
+/* ============================================================
+   Render
+   ============================================================ */
+function draw(t){
+  const grid=buildGrid(currentString(t));
+  const rows=grid.length, cols=grid[0].length;
+  const totalCols=cols+PAD*2, totalRows=rows+PAD*2;
+
+  const dpr=Math.min(window.devicePixelRatio||1,2.5);
+  const pitch=state.pitch;                       // css px between dot centers
+  const matW=totalCols*pitch, matH=totalRows*pitch;
+
+  // size canvas to the matrix
+  cv.style.width=matW+'px';
+  cv.style.maxWidth='100%';
+  cv.width=Math.round(matW*dpr);
+  cv.height=Math.round(matH*dpr);
+  cv.style.height='auto';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  if(glow.width!==cv.width||glow.height!==cv.height){ glow.width=cv.width; glow.height=cv.height; }
+  gx.setTransform(dpr,0,0,dpr,0,0);
+
+  const ledC=hex2rgb(state.color);
+  const coreC=mix(ledC,[255,255,255],state.coreWhite/100);
+  const bgC=hex2rgb(state.bg);
+
+  // background
+  ctx.fillStyle=rgba(bgC,1); ctx.fillRect(0,0,matW,matH);
+  gx.clearRect(0,0,matW,matH);
+
+  const R=pitch*(state.fill/100);                 // dot radius
+  const offA=state.offGrid/100;
+  const varA=state.variance/100;
+  const deadP=state.dead/100;
+  const flick=state.flicker/100;
+
+  const drawDot=(g,cx,cy,rad,col)=>{
+    if(state.square){ g.fillRect(cx-rad,cy-rad,rad*2,rad*2); }
+    else { g.beginPath(); g.arc(cx,cy,rad,0,Math.PI*2); g.fill(); }
+  };
+
+  for(let r=0;r<totalRows;r++){
+    for(let c=0;c<totalCols;c++){
+      const cx=c*pitch+pitch/2, cy=r*pitch+pitch/2;
+      const gr=r-PAD, gc=c-PAD;
+      const lit = gr>=0&&gr<rows&&gc>=0&&gc<cols && grid[gr][gc]===1;
+      const rnd=hash(c+11,r+7);
+
+      if(!lit){
+        if(offA>0){
+          // faint, slightly varied "off" dot — the visible matrix grid
+          const j=1-varA*0.6*hash(c,r);
+          ctx.fillStyle=rgba(mix(bgC,ledC,0.18+0.10*hash(c+3,r+5)), offA*0.5*j);
+          drawDot(ctx,cx,cy,R*0.62,0);
+        }
+        continue;
+      }
+
+      // ---- lit pixel ----
+      let bright=1 - varA*rnd;                    // per-dot variance
+      if(hash(c+31,r+17) < deadP) bright*=0.28;    // a few weak/dying dots
+      if(flick>0){                                 // animate a sparse subset
+        const fph=hash(c+99,r+44);
+        if(fph<flick*0.5){
+          bright*= 0.78 + 0.22*Math.sin(t*0.012 + fph*60);
+        }
+      }
+      bright=Math.max(0.08,bright);
+
+      // body on main canvas
+      ctx.fillStyle=rgba(ledC,0.9*bright);
+      drawDot(ctx,cx,cy,R,0);
+
+      // hot core (additive)
+      if(state.coreInt>0&&state.coreSize>0){
+        const cr=R*(state.coreSize/100)*1.15;
+        const g1=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(cr,0.5));
+        g1.addColorStop(0,rgba(coreC,(state.coreInt/100)*bright));
+        g1.addColorStop(1,rgba(coreC,0));
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        ctx.fillStyle=g1; ctx.beginPath(); ctx.arc(cx,cy,cr,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+
+      // contribute to bloom layer
+      gx.fillStyle=rgba(mix(ledC,coreC,0.4),0.95*bright);
+      drawDot(gx,cx,cy,R,0);
+    }
+  }
+
+  // ---- halo / bloom pass ----
+  if(state.bloomInt>0&&state.bloomBlur>0){
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    ctx.globalAlpha=state.bloomInt/100;
+    ctx.filter=`blur(${state.bloomBlur}px)`;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.drawImage(glow,0,0);
+    ctx.restore();
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.filter='none';
+  }
+
+  // ---- vignette ----
+  if(state.vignette>0){
+    const vg=ctx.createRadialGradient(matW/2,matH/2,Math.min(matW,matH)*0.25,matW/2,matH/2,Math.max(matW,matH)*0.62);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(1,`rgba(0,0,0,${state.vignette/100*0.85})`);
+    ctx.fillStyle=vg; ctx.fillRect(0,0,matW,matH);
+  }
+}
+
+/* ============================================================
+   Loop
+   ============================================================ */
+function frame(t){ draw(t); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+
+/* ============================================================
+   Controls wiring
+   ============================================================ */
+const sliders=['pitch','fill','coreWhite','coreSize','coreInt','bloomBlur','bloomInt','offGrid','variance','dead','flicker','vignette'];
+sliders.forEach(id=>{
+  const el=document.getElementById(id), out=document.getElementById(id+'_v');
+  const upd=()=>{ state[id]=+el.value; if(out)out.textContent=el.value; };
+  el.addEventListener('input',upd); upd();
+});
+document.getElementById('square').addEventListener('change',e=>state.square=e.target.checked);
+document.getElementById('color').addEventListener('input',e=>state.color=e.target.value);
+document.getElementById('bg').addEventListener('input',e=>state.bg=e.target.value);
+document.getElementById('text').addEventListener('input',e=>state.text=e.target.value);
+document.getElementById('secs').addEventListener('change',e=>state.secs=e.target.checked);
+document.getElementById('h12').addEventListener('change',e=>state.h12=e.target.checked);
+
+// swatches
+const SW=[['#dfe9ff','cool white'],['#ff3b30','alarm red'],['#ffb000','amber'],['#00e5d0','teal'],['#6bff7a','phosphor green'],['#ff8a3d','sodium']];
+const swWrap=document.getElementById('swatches');
+SW.forEach(([hex])=>{
+  const b=document.createElement('button');
+  b.style.background=hex; b.style.color=hex; b.title=hex;
+  b.onclick=()=>{ state.color=hex; document.getElementById('color').value=hex; };
+  swWrap.appendChild(b);
+});
+
+// mode segmented control
+const modeSeg=document.getElementById('modeSeg');
+const swStart=document.getElementById('swStart'), swReset=document.getElementById('swReset');
+const textGroup=document.getElementById('textGroup'), hint=document.getElementById('hint');
+function setMode(m){
+  state.mode=m;
+  [...modeSeg.children].forEach(b=>b.setAttribute('aria-pressed', b.dataset.mode===m));
+  const isSW=m==='stopwatch';
+  swStart.hidden=!isSW; swReset.hidden=!isSW;
+  textGroup.style.display = m==='text' ? '' : 'none';
+  // keep clock toggles visible in clock mode too
+  if(m==='clock'){ textGroup.style.display=''; document.getElementById('text').parentElement.style.display='none'; }
+  else { document.getElementById('text').parentElement.style.display=''; }
+  hint.textContent = m==='clock' ? 'live time · HH:MM' : m==='stopwatch' ? 'press START' : 'type anything';
+}
+modeSeg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b)setMode(b.dataset.mode); });
+
+swStart.addEventListener('click',()=>{
+  const now=performance.now();
+  if(sw.running){ sw.acc+=now-sw.base; sw.running=false; swStart.textContent='START'; }
+  else { sw.base=now; sw.running=true; swStart.textContent='STOP'; }
+});
+swReset.addEventListener('click',()=>{ sw={running:false,base:0,acc:0}; swStart.textContent='START'; });
+
+// presets
+const PRESETS={
+  photo:{color:'#e6edff',bg:'#070708',pitch:18,fill:46,coreWhite:84,coreSize:48,coreInt:90,bloomBlur:16,bloomInt:62,offGrid:24,variance:34,dead:6,flicker:16,vignette:52,square:false},
+  clean:{color:'#dfe9ff',bg:'#05060a',pitch:16,fill:42,coreWhite:60,coreSize:34,coreInt:70,bloomBlur:8,bloomInt:34,offGrid:8,variance:8,dead:0,flicker:0,vignette:20,square:false},
+  alarm:{color:'#ff3b30',bg:'#0a0303',pitch:20,fill:48,coreWhite:30,coreSize:30,coreInt:80,bloomBlur:18,bloomInt:70,offGrid:14,variance:18,dead:2,flicker:8,vignette:55,square:false},
+  depot:{color:'#ffb000',bg:'#080602',pitch:14,fill:50,coreWhite:25,coreSize:26,coreInt:65,bloomBlur:12,bloomInt:50,offGrid:30,variance:40,dead:9,flicker:22,vignette:48,square:true}
+};
+document.querySelectorAll('[data-preset]').forEach(b=>{
+  b.onclick=()=>{
+    const p=PRESETS[b.dataset.preset]; Object.assign(state,p);
+    sliders.forEach(id=>{ const el=document.getElementById(id), out=document.getElementById(id+'_v'); if(id in p){ el.value=p[id]; if(out)out.textContent=p[id]; }});
+    document.getElementById('square').checked=p.square;
+    document.getElementById('color').value=p.color;
+    document.getElementById('bg').value=p.bg;
+  };
+});
+
+setMode('clock');
+</script>
+</body>
+</html>

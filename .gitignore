@@ -1,0 +1,5 @@
+.DS_Store
+*.cbbak
+
+# internal project memory (deban) — kept local, not published
+.deban/
