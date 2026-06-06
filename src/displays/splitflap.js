@@ -14,7 +14,7 @@ import { dust } from '../core/wear.js';
 // the printable card alphabet (the physical drum order). Space + A-Z + 0-9 + a few marks, like a real board.
 const CHARSET = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:-/'";
 const IDX = (() => { const m = {}; for (let i = 0; i < CHARSET.length; i++) m[CHARSET[i]] = i; return m; })();
-const BOARD_FONT = "'JetBrains Mono', monospace";
+const BOARD_FONT = "'JetBrains Mono', 'Noto Sans JP', sans-serif";   // JP fallback so kana/kanji cards render
 
 // content: text param (upper-cased to the drum charset) or a live clock.
 function content(p) {
@@ -29,7 +29,15 @@ function content(p) {
 function drumIndex(ch) { return IDX[ch] != null ? IDX[ch] : 0; }
 
 // forward distance (cards step one way only, wrapping past the end of the drum) from a→b.
-function fwdDist(a, b) { return (b - a + CHARSET.length) % CHARSET.length; }
+function fwdDist(a, b, len) { return (b - a + len) % len; }
+
+// per-render drum: the base latin charset + any extra glyphs in the content (kana/kanji) appended, so
+// Japanese targets exist on the drum and the leaves can flip to them (drawn via the JP-fallback font).
+function buildDrum(str) {
+  let d = CHARSET;
+  for (const ch of str) if (d.indexOf(ch) < 0) d += ch;
+  return d;
+}
 
 export default {
   id: 'splitflap',
@@ -38,10 +46,10 @@ export default {
   physics: 'Printed cards on a per-cell drum step one-way through the alphabet; the top leaf folds down across a mid-cell seam to the target. Ambient-lit aged card stock, dark glyph, mechanical settle bounce.',
   USES: ['stageSize', 'hex2rgb', 'mix', 'rgba', 'dust'],
   params: [
-    { key: 'text', label: 'text', type: 'text', max: 18, default: 'GALORE', group: 'content' },
+    { key: 'text', label: 'text', type: 'text', max: 18, default: 'Split-Flap', group: 'content' },
     { key: 'source', label: 'source', type: 'select', options: ['text', 'clock'], default: 'text', group: 'content' },
-    { key: 'card', label: 'card stock', type: 'color', default: '#e9e2d2', group: 'color' },
-    { key: 'ink', label: 'printed ink', type: 'color', default: '#1a1713', group: 'color' },
+    { key: 'card', label: 'card stock', type: 'color', default: '#141210', group: 'color' },
+    { key: 'ink', label: 'printed ink', type: 'color', default: '#f3efe6', group: 'color' },
     { key: 'bg', label: 'background', type: 'color', default: '#0c0b0a', group: 'color' },
     { key: 'flipMs', label: 'flip speed', type: 'range', min: 30, max: 200, step: 5, default: 70, group: 'motion' },
     { key: 'cascade', label: 'flips to target', type: 'range', min: 1, max: 28, step: 1, default: 16, group: 'motion' },
@@ -70,6 +78,7 @@ export default {
 
     const str = content(p);
     const n = str.length;
+    const DRUM = buildDrum(str), DLEN = DRUM.length;   // drum absorbs any non-latin glyphs in the target
 
     // --- fit a row of cells to the stage (real flap cells are taller than wide, ~0.66:1) ---
     const aspect = 0.66, pad = Math.min(w, h) * 0.12, gapPx = (p.gap / 100);
@@ -77,7 +86,7 @@ export default {
     const maxW = w - pad * 2, total = (k) => cw * k + gp * (k - 1);
     if (total(n) > maxW) { const s = maxW / total(n); ch *= s; cw *= s; gp = cw * gapPx; }
     const startX = (w - total(n)) / 2, y0 = (h - ch) / 2;
-    const fontPx = ch * 0.62, half = ch / 2;
+    const fontPx = ch * 0.58, half = ch / 2;   // a touch smaller so full-width kana/kanji fit the card
     const rad = Math.min(cw, ch) * (p.radius / 100) * 0.5;
 
     // --- animation clock: one "arrival cycle" = cascade flips + a hold, then re-scramble & arrive again ---
@@ -100,10 +109,10 @@ export default {
 
       // target this cell must arrive at; a per-cell start char is picked from the *previous* cycle's seed so
       // each arrival genuinely flips through intermediates (stable per seed + cycle, so it's reproducible).
-      const tgt = drumIndex(str[i]);
-      const startOff = 1 + Math.floor(rng.hash(i + cycle * 13, 71) * (CHARSET.length - 2)); // 1..len-1 cards back
-      const fromIdx = (tgt - startOff + CHARSET.length) % CHARSET.length;
-      const steps = fwdDist(fromIdx, tgt) || CHARSET.length;  // cards to flip this cycle (never zero)
+      const ti0 = DRUM.indexOf(str[i]); const tgt = ti0 < 0 ? 0 : ti0;
+      const startOff = 1 + Math.floor(rng.hash(i + cycle * 13, 71) * (DLEN - 2)); // 1..len-1 cards back
+      const fromIdx = (tgt - startOff + DLEN) % DLEN;
+      const steps = fwdDist(fromIdx, tgt, DLEN) || DLEN;  // cards to flip this cycle (never zero)
 
       // cascade stagger: cells nearer the end start a touch later (sweep reads left→right then settling).
       const stag = stagA * (i / Math.max(1, n - 1)) * cascadeN * 0.5 * flipMs;
@@ -120,9 +129,9 @@ export default {
         if (done >= steps) { settled = steps; frac = 0; flipping = false; }
         else { settled = Math.floor(done); frac = done - settled; flipping = true; }
       }
-      const curIdx = (fromIdx + settled) % CHARSET.length;        // card currently showing on the bottom leaf
-      const nextIdx = (fromIdx + settled + 1) % CHARSET.length;   // card about to drop in from above
-      const curCh = CHARSET[curIdx], nextCh = CHARSET[flipping ? nextIdx : curIdx];
+      const curIdx = (fromIdx + settled) % DLEN;        // card currently showing on the bottom leaf
+      const nextIdx = (fromIdx + settled + 1) % DLEN;   // card about to drop in from above
+      const curCh = DRUM[curIdx], nextCh = DRUM[flipping ? nextIdx : curIdx];
 
       // settle overshoot: on the very last seated card, add a small decaying bounce on the top leaf.
       let restAng = 0;

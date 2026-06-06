@@ -41,9 +41,9 @@ export default {
   physics: 'Electrophoretic e-paper: charged black/white pigment in microcapsules driven to the surface by a field and held with no power (bistable). Reflective, matte, no emission — read by ambient light. Full-refresh flash on change clears the partial-refresh ghost residue that otherwise accumulates.',
   USES: ['stageSize', 'textGrid', 'ambientGradient', 'hex2rgb', 'mix', 'rgba', 'grain'],
   params: [
-    { key: 'text', label: 'text (a|b|c)', type: 'text', max: 40, default: 'HELLO|日本|E-INK|電子', group: 'content' },
+    { key: 'text', label: 'text (a|b|c)', type: 'text', max: 40, default: 'E-INK|電子', group: 'content' },
     { key: 'source', label: 'source', type: 'select', options: ['text', 'clock'], default: 'text', group: 'content' },
-    { key: 'rasterH', label: 'glyph grid', type: 'range', min: 7, max: 22, step: 1, default: 11, group: 'content' },
+    { key: 'rasterH', label: 'glyph grid', type: 'range', min: 7, max: 44, step: 1, default: 11, group: 'content' },
     { key: 'updateMs', label: 'update ms', type: 'range', min: 400, max: 6000, step: 100, default: 2200, group: 'content' },
     { key: 'ink', label: 'ink (dark)', type: 'color', default: '#161413', group: 'paper' },
     { key: 'paper', label: 'paper', type: 'color', default: '#d8d6cf', group: 'paper' },

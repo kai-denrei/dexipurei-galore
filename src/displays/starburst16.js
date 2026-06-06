@@ -21,7 +21,7 @@ const CENTER_VERTS = ['i', 'l']; // dropped in 14-segment mode
 // which segments light per character (uppercased on lookup). chosen for legibility on a real starburst.
 const GLYPH = {
   '0': 'a1 a2 b c d1 d2 e f j k',          // slashed zero (diagonals = the slash)
-  '1': 'b c i l',                           // vertical stroke through the middle (verticals); falls back to 'b c'
+  '1': 'b c',                               // two right verticals only — a 7-seg-style "1" (2 segments)
   '2': 'a1 a2 b g1 g2 e d1 d2',
   '3': 'a1 a2 b c d1 d2 g2',
   '4': 'f g1 g2 b c',
@@ -123,7 +123,7 @@ export default {
   physics: 'Emissive bar segments like a VFD/LED 7-seg, but 14/16 bars (split horizontals + four diagonals + two center verts) for full alphanumeric: hex bars, multi-pass glow + white hot core, off-segment ghost, junction bleed, per-segment variance. Segment bars cannot form kanji — content is alphanumeric.',
   USES: ['stageSize', 'vignette', 'hex2rgb', 'rgba'],
   params: [
-    { key: 'text', label: 'text', type: 'text', max: 16, default: 'GALORE 16', group: 'content' },
+    { key: 'text', label: 'text', type: 'text', max: 16, default: '16 SEGMENTS', group: 'content' },
     { key: 'source', label: 'source', type: 'select', options: ['text', 'clock'], default: 'text', group: 'content' },
     { key: 'seg16', label: '16 segments', type: 'toggle', default: true, group: 'content' },
     { key: 'color', label: 'segment', type: 'color', default: '#ffb000', group: 'color' },

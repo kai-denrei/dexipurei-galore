@@ -17,11 +17,11 @@ export default {
   physics: 'Round emissive LEDs on a dark grid; hot white core + additive halo bloom; per-pixel variance, weak/dying dots, sparse flicker.',
   USES: ['textGrid', 'bloom', 'vignette', 'hex2rgb', 'mix', 'rgba'],
   params: [
-    { key: 'text', label: 'text', type: 'text', max: 24, default: 'HELLO 日本', group: 'content' },
+    { key: 'text', label: 'text', type: 'text', max: 24, default: 'ドットMATRIX', group: 'content' },
     { key: 'source', label: 'source', type: 'select', options: ['text', 'clock'], default: 'text', group: 'content' },
     { key: 'fill', label: 'dot fill', type: 'range', min: 20, max: 62, step: 1, default: 44, group: 'geometry' },
     { key: 'square', label: 'square pixels', type: 'toggle', default: false, group: 'geometry' },
-    { key: 'rasterH', label: 'kanji grid', type: 'range', min: 7, max: 44, step: 1, default: 11, group: 'geometry' },
+    { key: 'rasterH', label: 'kanji grid', type: 'range', min: 7, max: 44, step: 1, default: 32, group: 'geometry' },
     { key: 'color', label: 'LED color', type: 'color', default: '#dfe9ff', group: 'color' },
     { key: 'bg', label: 'background', type: 'color', default: '#070708', group: 'color' },
     { key: 'coreWhite', label: 'whiteness', type: 'range', min: 0, max: 100, step: 1, default: 78, group: 'hot core' },

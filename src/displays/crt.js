@@ -67,10 +67,10 @@ export default {
   physics: 'Electron beam exciting phosphor line-by-line behind glass: halation bloom, RGB shadow-mask/aperture-grille quantization, inter-row scanlines, a rolling refresh bar, barrel curvature, and burn-in/flicker/drift wear.',
   USES: ['stageSize', 'textGrid', 'bloom', 'scanlines', 'vignette', 'chromaticOffset', 'hex2rgb', 'mix', 'rgba'],
   params: [
-    { key: 'text', label: 'text', type: 'text', max: 24, default: 'CRT 日本', group: 'content' },
+    { key: 'text', label: 'text', type: 'text', max: 24, default: 'CRT 柔術', group: 'content' },
     { key: 'source', label: 'source', type: 'select', options: ['text', 'clock'], default: 'text', group: 'content' },
     { key: 'mode', label: 'mode', type: 'select', options: ['raster', 'vector'], default: 'raster', group: 'content' },
-    { key: 'rasterH', label: 'raster height', type: 'range', min: 7, max: 24, step: 1, default: 11, group: 'content' },
+    { key: 'rasterH', label: 'raster height', type: 'range', min: 7, max: 32, step: 1, default: 24, group: 'content' },
     { key: 'color', label: 'phosphor', type: 'color', default: '#7dffc4', group: 'color' },
     { key: 'bg', label: 'background', type: 'color', default: '#040806', group: 'color' },
     { key: 'persistence', label: 'persistence', type: 'range', min: 0, max: 100, step: 1, default: 40, group: 'beam' },
