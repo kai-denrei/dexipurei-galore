@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>offline · dexipurei-galore</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #08080a; color: #8b8780;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .wrap { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; gap: 16px; padding: 28px; }
+  .dots { display: grid; grid-template-columns: repeat(5, 12px); gap: 7px; margin-bottom: 6px; }
+  .dots i { width: 12px; height: 12px; border-radius: 50%; background: #1b1b22; }
+  .dots i.on { background: #00e5d0; box-shadow: 0 0 10px #00e5d0; }
+  h1 { color: #e9e6df; font-weight: 600; font-size: 18px; letter-spacing: .5px; margin: 0; }
+  p { max-width: 38ch; margin: 0; }
+  button { margin-top: 6px; background: #15151b; color: #e9e6df; border: 1px solid #23232b; border-radius: 9px;
+    padding: 11px 18px; font: 500 13px ui-monospace, monospace; cursor: pointer; }
+  button:hover { border-color: #00e5d0; color: #00e5d0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- a tiny dot-matrix "no signal" motif -->
+    <div class="dots">
+      <i class="on"></i><i></i><i class="on"></i><i></i><i class="on"></i>
+      <i></i><i class="on"></i><i></i><i class="on"></i><i></i>
+      <i class="on"></i><i></i><i class="on"></i><i></i><i class="on"></i>
+    </div>
+    <h1>offline</h1>
+    <p>No connection. dexipurei-galore needs the network for its first load — once a display has been opened online it stays available offline.</p>
+    <button onclick="location.reload()">retry</button>
+  </div>
+</body>
+</html>

@@ -21,6 +21,16 @@ function row(label, control, valueEl) {
   return el('div', { class: 'row' }, [el('label', { text: label }), control, valueEl || el('span', { class: 'val' })]);
 }
 
+// a collapsible control group: header with a +/− toggle, body that hides when collapsed.
+function group(name, children) {
+  const toggle = el('span', { class: 'group-toggle', text: '−' });
+  const head = el('button', { class: 'group-head', type: 'button' }, [el('span', { class: 'group-name', text: name }), toggle]);
+  const body = el('div', { class: 'group-body' }, [].concat(children).filter(Boolean));
+  const wrap = el('div', { class: 'group' }, [head, body]);
+  head.addEventListener('click', () => { const c = wrap.classList.toggle('collapsed'); toggle.textContent = c ? '+' : '−'; });
+  return wrap;
+}
+
 function paramRow(p, state, onChange) {
   if (p.type === 'range') {
     // simplified control: [−] [value] [+]. value is also directly editable. clamped to min/max, stepped by step.
@@ -76,7 +86,7 @@ export function buildControls(root, mod, state, onChange = () => {}) {
     class: 'mini', text: 're-roll ⟳',
     onclick: () => { state.seed = (Math.random() * 1e9) >>> 0; seedInput.value = state.seed; onChange(); },
   });
-  frag.appendChild(el('div', { class: 'group' }, [el('h3', { text: 'seed' }), el('div', { class: 'row seedrow' }, [seedInput, reroll])]));
+  frag.appendChild(group('seed', el('div', { class: 'row seedrow' }, [seedInput, reroll])));
 
   // param groups (insertion order preserved)
   const groups = new Map();
@@ -86,14 +96,14 @@ export function buildControls(root, mod, state, onChange = () => {}) {
     groups.get(g).push(p);
   }
   for (const [gname, params] of groups) {
-    frag.appendChild(el('div', { class: 'group' }, [el('h3', { text: gname }), ...params.map((p) => paramRow(p, state, onChange))]));
+    frag.appendChild(group(gname, params.map((p) => paramRow(p, state, onChange))));
   }
 
   // presets
   if (mod.presets && Object.keys(mod.presets).length) {
     const btns = Object.keys(mod.presets).map((name) =>
       el('button', { class: 'mini', text: name, onclick: () => { Object.assign(state, mod.presets[name]); onChange(); rebuild(); } }));
-    frag.appendChild(el('div', { class: 'group' }, [el('h3', { text: 'presets' }), el('div', { class: 'preset-row' }, btns)]));
+    frag.appendChild(group('presets', el('div', { class: 'preset-row' }, btns)));
   }
 
   // exports
@@ -101,16 +111,13 @@ export function buildControls(root, mod, state, onChange = () => {}) {
     type: 'file', accept: 'application/json', style: 'display:none',
     onchange: (e) => { const f = e.target.files[0]; if (f) f.text().then((txt) => { importParams(mod, txt, state); onChange(); rebuild(); }); },
   });
-  frag.appendChild(el('div', { class: 'group' }, [
-    el('h3', { text: 'export' }),
-    el('div', { class: 'preset-row' }, [
-      el('button', { class: 'mini', text: 'params .json', onclick: () => exportParams(mod, state) }),
-      el('button', { class: 'mini', text: 'import .json', onclick: () => fileInput.click() }),
-      el('button', { class: 'mini', text: 'snapshot .png ⬓', onclick: () => exportPNG(mod, state) }),
-      el('button', { class: 'mini wide', text: 'standalone .html', onclick: () => exportStandalone(mod, state) }),
-      fileInput,
-    ]),
-  ]));
+  frag.appendChild(group('export', el('div', { class: 'preset-row' }, [
+    el('button', { class: 'mini', text: 'params .json', onclick: () => exportParams(mod, state) }),
+    el('button', { class: 'mini', text: 'import .json', onclick: () => fileInput.click() }),
+    el('button', { class: 'mini', text: 'snapshot .png ⬓', onclick: () => exportPNG(mod, state) }),
+    el('button', { class: 'mini wide', text: 'standalone .html', onclick: () => exportStandalone(mod, state) }),
+    fileInput,
+  ])));
 
   root.appendChild(frag);
 }

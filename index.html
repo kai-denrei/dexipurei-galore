@@ -4,20 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>dexipurei-galore · display simulators</title>
+<meta name="description" content="A gallery of procedural display simulators — dot-matrix, segment, Nixie, VFD, split-flap, CRT, e-ink, voxel and more. Type anything; displays that can render it, will.">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest?v=03d696fb">
+<meta name="theme-color" content="#08080a">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png?v=03d696fb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="dexipurei">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="src/core/ui.css?v=6db64554">
+<link rel="stylesheet" href="src/core/ui.css?v=03d696fb">
 
-<!-- anti-cache hints (belt-and-braces; real control is HTTP headers when hosted) -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<!-- anti-cache hints (belt-and-braces; real control is the service worker + HTTP headers) -->
+<meta http-equiv="Cache-Control" content="no-cache">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 
 <!-- cache-bust + version badge: token bumps via scripts/bust.sh; badge mounts top-left into the slot -->
-<meta name="cb" content="6db64554">
-<link rel="icon" type="image/svg+xml" href="cb-shapes/45.svg?v=6db64554">
-<script src="cb-badge.js?v=6db64554" defer></script>
+<meta name="cb" content="03d696fb">
+<link rel="icon" type="image/svg+xml" href="cb-shapes/03.svg?v=03d696fb">
+<script src="cb-badge.js?v=03d696fb" defer></script>
 </head>
 <body>
 
@@ -28,23 +38,74 @@
   </div>
 </header>
 
-<div class="app">
+<div class="app" id="app" data-view="landing">
   <nav id="tabs" class="rail" aria-label="display modules"></nav>
 
-  <main class="center">
-    <div class="module-head">
-      <h2 id="module-name">gallery</h2>
-      <p id="physics">loading modules…</p>
-    </div>
-    <div id="stage-wrap" class="stage-wrap" hidden>
-      <div class="bezel" id="stage"><canvas id="screen"></canvas></div>
-    </div>
-    <div id="landing" class="landing" hidden></div>
-  </main>
+  <main class="main">
+    <!-- LANDING: one input drives every preview -->
+    <section id="landing-view">
+      <div class="landing-head">
+        <input id="landing-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+               spellcheck="false" maxlength="24" placeholder="type anything — 日本語 too…">
+        <p class="landing-hint">Each preview shows your text if it can render it; dimmed ones can't (e.g. seven-segment is digits only). Tap a display to open it full-screen.</p>
+      </div>
+      <div id="landing" class="landing"></div>
+    </section>
 
-  <aside id="panel" class="panel" hidden></aside>
+    <!-- MODULE: display pinned to the top, collapsible controls below -->
+    <section id="module-view" hidden>
+      <div class="module-bar">
+        <button id="back-btn" type="button">‹ gallery</button>
+        <h2 id="module-name"></h2>
+      </div>
+      <div class="stage-sticky">
+        <div class="bezel" id="stage"><canvas id="screen"></canvas></div>
+      </div>
+      <p id="physics" class="physics"></p>
+      <aside id="panel" class="panel"></aside>
+    </section>
+  </main>
 </div>
 
-<script type="module" src="src/app.js?v=6db64554"></script>
+<div id="sw-toast" role="status"></div>
+<div id="ios-hint" role="note"></div>
+
+<script type="module" src="src/app.js?v=03d696fb"></script>
+<script>
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  var toast = document.getElementById('sw-toast');
+  function showUpdate(worker) {
+    toast.innerHTML = '<span>New version available.</span>';
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Refresh';
+    b.onclick = function () { worker.postMessage({ type: 'SKIP_WAITING' }); };
+    toast.appendChild(b); toast.style.display = 'flex';
+  }
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      if (reg.waiting && navigator.serviceWorker.controller) showUpdate(reg.waiting);
+      reg.addEventListener('updatefound', function () {
+        var nw = reg.installing; if (!nw) return;
+        nw.addEventListener('statechange', function () {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdate(nw);
+        });
+      });
+    }).catch(function () {});
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloaded) return; reloaded = true; window.location.reload();
+    });
+  });
+  // iOS Safari has no beforeinstallprompt — show a one-time Add-to-Home-Screen hint to non-installed users.
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS && !(('standalone' in navigator) && navigator.standalone) && !localStorage.getItem('a2hs-dismissed')) {
+    var hint = document.getElementById('ios-hint');
+    hint.innerHTML = '<span>Install: tap <b>Share</b> ↑ then <b>Add to Home Screen</b></span>';
+    var x = document.createElement('button'); x.type = 'button'; x.textContent = 'OK';
+    x.onclick = function () { hint.style.display = 'none'; try { localStorage.setItem('a2hs-dismissed', '1'); } catch (e) {} };
+    hint.appendChild(x); hint.style.display = 'flex';
+  }
+})();
+</script>
 </body>
 </html>
