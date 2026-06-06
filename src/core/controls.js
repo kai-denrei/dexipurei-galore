@@ -33,21 +33,38 @@ function group(name, children) {
 
 function paramRow(p, state, onChange) {
   if (p.type === 'range') {
-    // simplified control: [−] [value] [+]. value is also directly editable. clamped to min/max, stepped by step.
+    // segmented fill meter (no handle): drag/click to set the fill edge; segments ramp in colour
+    // intensity from dim teal up to near-WHITE at 100%. Arrow keys fine-tune by one step.
     const step = p.step == null ? 1 : p.step;
-    const lo = p.min == null ? -Infinity : p.min, hi = p.max == null ? Infinity : p.max;
+    const min = p.min == null ? 0 : p.min, max = p.max == null ? 100 : p.max, span = (max - min) || 1;
+    const N = Math.max(1, Math.min(20, Math.round(span / step)));   // segment count (capped for legibility)
     const decimals = (String(step).split('.')[1] || '').length;
     const fmt = (v) => (decimals ? v.toFixed(decimals) : String(v));
-    const field = el('input', { type: 'number', class: 'step-val', value: fmt(state[p.key]), min: p.min, max: p.max, step });
-    const apply = (v) => {
-      if (!isFinite(v)) v = state[p.key];
-      v = +(Math.min(hi, Math.max(lo, Math.round(v / step) * step))).toFixed(6);
-      state[p.key] = v; field.value = fmt(v); onChange();
+    const val = el('span', { class: 'val', text: fmt(state[p.key]) });
+    const meter = el('div', { class: 'meter', tabindex: '0', role: 'slider' });
+    meter.setAttribute('aria-valuemin', min); meter.setAttribute('aria-valuemax', max);
+    const segs = [];
+    for (let i = 0; i < N; i++) { const s = el('div', { class: 'seg' }); meter.appendChild(s); segs.push(s); }
+    // intensity ramp: lightness rises and chroma fades toward the top so 100% reads white.
+    const colorFor = (i) => { const f = N <= 1 ? 1 : i / (N - 1); const L = 0.5 + 0.47 * f, C = 0.15 * (1 - 0.9 * f); return `oklch(${L.toFixed(3)} ${C.toFixed(3)} 178)`; };
+    const clampV = (v) => +(Math.min(max, Math.max(min, Math.round(v / step) * step))).toFixed(6);
+    const paint = () => {
+      const lvl = Math.round((state[p.key] - min) / span * N);
+      for (let i = 0; i < N; i++) { const on = i < lvl; segs[i].classList.toggle('on', on); segs[i].style.background = on ? colorFor(i) : ''; }
+      val.textContent = fmt(state[p.key]); meter.setAttribute('aria-valuenow', state[p.key]);
     };
-    field.addEventListener('change', () => apply(+field.value));
-    const minus = el('button', { class: 'step-btn', type: 'button', text: '−', onclick: () => apply(state[p.key] - step) });
-    const plus = el('button', { class: 'step-btn', type: 'button', text: '+', onclick: () => apply(state[p.key] + step) });
-    return el('div', { class: 'row' }, [el('label', { text: p.label }), el('div', { class: 'stepper' }, [minus, field, plus])]);
+    const setLevel = (lvl) => { lvl = Math.max(0, Math.min(N, lvl)); state[p.key] = clampV(min + (lvl / N) * span); paint(); onChange(); };
+    const fromEvent = (e) => { const r = meter.getBoundingClientRect(); setLevel(Math.ceil((e.clientX - r.left) / r.width * N)); };
+    let drag = false;
+    meter.addEventListener('pointerdown', (e) => { drag = true; try { meter.setPointerCapture(e.pointerId); } catch (_) {} fromEvent(e); });
+    meter.addEventListener('pointermove', (e) => { if (drag) fromEvent(e); });
+    meter.addEventListener('pointerup', (e) => { drag = false; try { meter.releasePointerCapture(e.pointerId); } catch (_) {} });
+    meter.addEventListener('keydown', (e) => {
+      const d = (e.key === 'ArrowRight' || e.key === 'ArrowUp') ? step : (e.key === 'ArrowLeft' || e.key === 'ArrowDown') ? -step : 0;
+      if (d) { state[p.key] = clampV((+state[p.key]) + d); paint(); onChange(); e.preventDefault(); }
+    });
+    paint();
+    return row(p.label, meter, val);
   }
   if (p.type === 'color') {
     const input = el('input', { type: 'color', value: state[p.key], oninput: (e) => { state[p.key] = e.target.value; onChange(); } });
