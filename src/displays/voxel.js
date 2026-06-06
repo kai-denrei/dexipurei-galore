@@ -18,6 +18,7 @@ import { textGrid } from '../core/text-raster.js';
 const MAX_VOXELS = 2600;          // hard CPU cap — builders bail once reached
 const FOCAL = 2.4;                // camera focal length in volume-radius units (perspective strength)
 const CAM_Z = 3.4;                // camera distance from volume center (along +Z)
+const ROLL_YAW = 0.5;             // fixed 3/4 yaw in odometer 'roll' mode so the vertical roll reads in 3D
 
 // Abstract unit-cube lattice (centered on origin, extent ±1). Returns flat [x,y,z, ...].
 function buildLattice(res, shape, edgeFall, rng) {
@@ -65,6 +66,43 @@ function buildDigits(str, depth, gridH, rng) {
   return pts.length ? pts : [0, 0, 0];
 }
 
+// Rolling odometer: each base-10 wheel rolls vertically (units fastest). For wheel w we show digit
+// floor(cont/10^w)%10 scrolling up and out while the next digit rolls in from below, clipped to a
+// one-glyph window — the two-half-digit transition — then extruded through Z like buildDigits.
+function buildRollingDigits(cont, depth, gridH, rng) {
+  const G = []; let gw = 0, gh = 0;
+  for (let d = 0; d < 10; d++) { const g = textGrid(String(d), { height: gridH }); G[d] = g; gw = Math.max(gw, g.cols); gh = Math.max(gh, g.rows); }
+  const width = Math.max(4, String(Math.max(0, Math.floor(cont))).length);
+  const stride = gw + 1;
+  const totalCols = width * stride - 1;
+  const cell = 1.74 / Math.max(totalCols, gh, 1);
+  const x0 = -(totalCols - 1) * cell / 2;
+  const yTop = (gh - 1) * cell / 2;
+  const dN = Math.max(1, Math.round(depth));
+  const extr = cell * (dN - 1);
+  const pts = [];
+  for (let w = 0; w < width; w++) {
+    const wheelPos = cont / Math.pow(10, w);
+    let d0 = Math.floor(wheelPos) % 10; if (d0 < 0) d0 += 10;
+    const d1 = (d0 + 1) % 10;
+    const rf = wheelPos - Math.floor(wheelPos);              // 0..1 roll fraction
+    const colBase = (width - 1 - w) * stride;                // wheel 0 (units) rightmost
+    const pair = [[d0, rf * gh], [d1, rf * gh - gh]];        // current scrolls up, next enters below
+    for (let pi = 0; pi < 2; pi++) {
+      const d = pair[pi][0], shift = pair[pi][1], g = G[d].grid, gr = G[d].rows, gc = G[d].cols;
+      const xoff = (gw - gc) >> 1;
+      for (let r = 0; r < gr; r++) for (let c = 0; c < gc; c++) {
+        if (!g[r][c]) continue;
+        const yRow = r - shift;
+        if (yRow < -0.001 || yRow > gh - 1 + 0.001) continue; // clip to the wheel window
+        const x = x0 + (colBase + xoff + c) * cell, y = yTop - yRow * cell;
+        for (let k = 0; k < dN; k++) { const z = dN === 1 ? 0 : (k / (dN - 1) - 0.5) * extr; pts.push(x, y, z); if (pts.length / 3 >= MAX_VOXELS) return pts; }
+      }
+    }
+  }
+  return pts.length ? pts : [0, 0, 0];
+}
+
 function content(p) {
   if (p.source === 'clock') {
     const d = new Date(), z = (n) => String(n).padStart(2, '0');
@@ -77,16 +115,17 @@ export default {
   id: 'voxel',
   name: 'Volumetric Voxel',
   category: 'volumetric',
-  physics: 'Swept-volume display faked in 2D: a 3D point set rotated by t, projected through a manual perspective camera, depth-sorted (painter), drawn as additive sprites with size/brightness fog by depth. In "digits" mode the number is extruded through Z into a lit voxel slab — a 3D dot-matrix; a sweep plane flares voxels it crosses.',
+  physics: 'Swept-volume display faked in 2D: a 3D point set rotated by t, projected through a manual perspective camera, depth-sorted (painter), drawn as additive sprites with size/brightness fog by depth. In "digits" mode the number is extruded through Z into a lit voxel slab — a 3D dot-matrix; a sweep plane flares voxels it crosses. A "roll" motion option rolls the digit wheels vertically, base-10, like a 3D odometer.',
   USES: ['stageSize', 'textGrid', 'bloom', 'vignette', 'hex2rgb', 'mix', 'rgba'],
   params: [
     { key: 'shape', label: 'shape', type: 'select', options: ['digits', 'cube', 'sphere', 'shell', 'frame'], default: 'digits', group: 'volume' },
     { key: 'text', label: 'digits/text', type: 'text', max: 12, default: '42', group: 'digits' },
     { key: 'source', label: 'source', type: 'select', options: ['text', 'clock'], default: 'text', group: 'digits' },
+    { key: 'motion', label: 'motion', type: 'select', options: ['spin', 'roll'], default: 'spin', group: 'digits' },
     { key: 'depth', label: 'extrude depth', type: 'range', min: 1, max: 16, step: 1, default: 5, group: 'digits' },
     { key: 'gridH', label: 'digit grid', type: 'range', min: 7, max: 18, step: 1, default: 9, group: 'digits' },
     { key: 'res', label: 'lattice res', type: 'range', min: 5, max: 18, step: 1, default: 11, group: 'volume' },
-    { key: 'spin', label: 'rotation speed', type: 'range', min: 0, max: 100, step: 1, default: 28, group: 'volume' },
+    { key: 'spin', label: 'speed (spin/roll)', type: 'range', min: 0, max: 100, step: 1, default: 28, group: 'volume' },
     { key: 'tilt', label: 'camera tilt', type: 'range', min: -45, max: 45, step: 1, default: 16, group: 'volume' },
     { key: 'size', label: 'voxel size', type: 'range', min: 1, max: 18, step: 0.5, default: 5.5, group: 'sprite' },
     { key: 'glow', label: 'glow', type: 'range', min: 0, max: 100, step: 1, default: 60, group: 'sprite' },
@@ -102,8 +141,8 @@ export default {
     { key: 'vignette', label: 'vignette', type: 'range', min: 0, max: 100, step: 1, default: 48, group: 'color' },
   ],
   presets: {
-    '3D Digits': { shape: 'digits', text: '42', source: 'text', depth: 5, gridH: 9, spin: 26, tilt: 16, size: 5.5, glow: 62, coreWhite: 58, fog: 52, sweep: 30, dead: 3, flicker: 14, edgeFall: 0, color: '#39e0ff', bg: '#03060a', vignette: 46 },
-    Counter: { shape: 'digits', source: 'clock', depth: 7, gridH: 9, spin: 18, tilt: 12, size: 5, glow: 64, coreWhite: 50, fog: 58, sweep: 22, dead: 2, flicker: 10, edgeFall: 0, color: '#7affc0', bg: '#02080a', vignette: 44 },
+    '3D Digits': { shape: 'digits', motion: 'spin', text: '42', source: 'text', depth: 5, gridH: 9, spin: 26, tilt: 16, size: 5.5, glow: 62, coreWhite: 58, fog: 52, sweep: 30, dead: 3, flicker: 14, edgeFall: 0, color: '#39e0ff', bg: '#03060a', vignette: 46 },
+    Odometer: { shape: 'digits', motion: 'roll', text: '0', depth: 6, gridH: 9, spin: 24, tilt: 14, size: 5, glow: 60, coreWhite: 52, fog: 54, sweep: 16, dead: 1, flicker: 8, edgeFall: 0, color: '#7affc0', bg: '#02080a', vignette: 44 },
     Phosphor: { shape: 'sphere', res: 11, spin: 30, tilt: 18, size: 6, glow: 58, coreWhite: 46, fog: 64, sweep: 50, sweepMs: 2600, dead: 8, flicker: 22, edgeFall: 30, color: '#39e0ff', bg: '#03060a', vignette: 52 },
     Radar: { shape: 'shell', res: 14, spin: 46, tilt: 8, size: 5.5, glow: 64, coreWhite: 30, fog: 76, sweep: 84, sweepMs: 1600, dead: 14, flicker: 34, edgeFall: 42, color: '#33ff77', bg: '#020703', vignette: 60 },
     Holocube: { shape: 'frame', res: 9, spin: 22, tilt: 24, size: 5, glow: 70, coreWhite: 60, fog: 40, sweep: 18, sweepMs: 3200, dead: 3, flicker: 10, edgeFall: 6, color: '#7affc0', bg: '#02080a', vignette: 40 },
@@ -115,14 +154,24 @@ export default {
     const coreC = mix(vox, [255, 255, 255], p.coreWhite / 100);
     if (!p.transparent) { ctx.fillStyle = rgba(bg, 1); ctx.fillRect(0, 0, w, h); }
 
-    // 1) build the point set — extruded digit slab, or an abstract lattice
-    const pts = p.shape === 'digits'
-      ? buildDigits(content(p), p.depth, Math.round(p.gridH), rng)
-      : buildLattice(Math.round(p.res), p.shape, p.edgeFall / 100, rng);
+    // 1) build the point set — rolling odometer digits, an extruded digit slab, or an abstract lattice
+    const rolling = p.shape === 'digits' && p.motion === 'roll';
+    let pts, yaw;
+    if (rolling) {
+      const start = parseInt(String(p.text).replace(/\D/g, ''), 10) || 0;
+      const cont = start + (t / 1000) * (0.15 + (p.spin / 100) * 6);   // count up; units wheel rolls fastest
+      pts = buildRollingDigits(cont, p.depth, Math.round(p.gridH), rng);
+      yaw = ROLL_YAW;                                                   // fixed 3/4 view so the roll reads
+    } else if (p.shape === 'digits') {
+      pts = buildDigits(content(p), p.depth, Math.round(p.gridH), rng);
+      yaw = (t / 1000) * (p.spin / 100) * 1.4;                          // continuous spin
+    } else {
+      pts = buildLattice(Math.round(p.res), p.shape, p.edgeFall / 100, rng);
+      yaw = (t / 1000) * (p.spin / 100) * 1.4;
+    }
     const n = pts.length / 3;
 
-    // 2) rotation from t: yaw spins continuously, pitch is the fixed camera tilt
-    const yaw = (t / 1000) * (p.spin / 100) * 1.4;
+    // 2) pitch is the fixed camera tilt
     const pitch = (p.tilt * Math.PI) / 180;
     const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
 
@@ -143,7 +192,7 @@ export default {
       const camZ = CAM_Z - rz;
       if (camZ <= 0.2) continue;
       const persp = FOCAL / camZ;
-      sprites.push({ sx: cx0 + rx * persp * scale, sy: cy0 + ry * persp * scale, depth: rz, persp, wz: rz, idx: i });
+      sprites.push({ sx: cx0 + rx * persp * scale, sy: cy0 - ry * persp * scale, depth: rz, persp, wz: rz, idx: i });
     }
     sprites.sort((a, b) => a.depth - b.depth);
 
