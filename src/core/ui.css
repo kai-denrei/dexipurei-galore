@@ -19,6 +19,7 @@ body {
   color: var(--ink);
   font-family: "JetBrains Mono", ui-monospace, monospace;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;   /* no pull-to-refresh / horizontal overscroll-to-navigate */
 }
 
 /* ---- header + version badge ---- */
@@ -124,8 +125,12 @@ input[type=text], select { flex: 1; min-width: 0; background: var(--panel-2); bo
 input[type=color] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); cursor: pointer; }
 /* segmented fill meter — replaces range sliders. drag/click sets the fill edge; segments ramp
    dim → near-white at 100% (intensity set inline per segment in controls.js). */
-.meter { display: flex; gap: 2px; flex: 1; min-width: 0; height: 26px; align-items: stretch; cursor: pointer; touch-action: none; border-radius: 6px; }
-.seg { flex: 1; min-width: 0; border-radius: 2px; background: var(--panel-2); box-shadow: inset 0 0 0 1px #1b1b22; }
+/* touch-action: pan-y lets the page still scroll vertically over the meter, but the browser does NOT
+   own the HORIZONTAL gesture — so a left/right drag adjusts the value instead of triggering swipe-back
+   / app-switch. .seg has pointer-events:none so the touch target is always the .meter (touch-action is
+   per-element, not inherited — without this the child seg would let the browser claim the gesture). */
+.meter { display: flex; gap: 2px; flex: 1; min-width: 0; height: 26px; align-items: stretch; cursor: pointer; touch-action: pan-y; border-radius: 6px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.seg { flex: 1; min-width: 0; border-radius: 2px; background: var(--panel-2); box-shadow: inset 0 0 0 1px #1b1b22; pointer-events: none; }
 .seg.on { box-shadow: none; }
 .meter:focus { outline: none; }
 .meter:focus-visible { outline: 1px solid var(--teal); outline-offset: 2px; }
