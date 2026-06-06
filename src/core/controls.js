@@ -23,12 +23,21 @@ function row(label, control, valueEl) {
 
 function paramRow(p, state, onChange) {
   if (p.type === 'range') {
-    const val = el('span', { class: 'val', text: String(state[p.key]) });
-    const input = el('input', {
-      type: 'range', min: p.min, max: p.max, step: p.step == null ? 1 : p.step, value: state[p.key],
-      oninput: (e) => { state[p.key] = +e.target.value; val.textContent = e.target.value; onChange(); },
-    });
-    return row(p.label, input, val);
+    // simplified control: [−] [value] [+]. value is also directly editable. clamped to min/max, stepped by step.
+    const step = p.step == null ? 1 : p.step;
+    const lo = p.min == null ? -Infinity : p.min, hi = p.max == null ? Infinity : p.max;
+    const decimals = (String(step).split('.')[1] || '').length;
+    const fmt = (v) => (decimals ? v.toFixed(decimals) : String(v));
+    const field = el('input', { type: 'number', class: 'step-val', value: fmt(state[p.key]), min: p.min, max: p.max, step });
+    const apply = (v) => {
+      if (!isFinite(v)) v = state[p.key];
+      v = +(Math.min(hi, Math.max(lo, Math.round(v / step) * step))).toFixed(6);
+      state[p.key] = v; field.value = fmt(v); onChange();
+    };
+    field.addEventListener('change', () => apply(+field.value));
+    const minus = el('button', { class: 'step-btn', type: 'button', text: '−', onclick: () => apply(state[p.key] - step) });
+    const plus = el('button', { class: 'step-btn', type: 'button', text: '+', onclick: () => apply(state[p.key] + step) });
+    return el('div', { class: 'row' }, [el('label', { text: p.label }), el('div', { class: 'stepper' }, [minus, field, plus])]);
   }
   if (p.type === 'color') {
     const input = el('input', { type: 'color', value: state[p.key], oninput: (e) => { state[p.key] = e.target.value; onChange(); } });

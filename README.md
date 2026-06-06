@@ -35,7 +35,7 @@ with full controls. (The exported standalone files are single-file / no-module a
 | `lixie` | Lixie Tube | emissive | exactly 10 edge-lit acrylic layers, floating digit, overlapping ghosts |
 | `crt` | Cathode-Ray Tube | emissive | scanlines, phosphor mask (grille/shadow/triad), halation, rolling refresh, curvature, burn-in |
 | `eink` | E-ink | reflective | matte paper, full-refresh flash, partial-refresh ghosting, capsule grain — the non-emissive counterpoint |
-| `voxel` | Volumetric Voxel | volumetric | manual 3D perspective point lattice, depth fog, sweep plane |
+| `voxel` | Volumetric Voxel | volumetric | 3D dot-matrix **digits** extruded through Z (default) — or abstract lattice/sphere/shell/frame; depth fog, sweep plane |
 | `fog` | Fog Projection | aerial | content on drifting mist, flow-noise warp + dropout, projection cone |
 
 Bitmap displays (dot-matrix, flip-dot, CRT, e-ink, fog) render **Japanese/unicode** via the rasterizer;

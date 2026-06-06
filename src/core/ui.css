@@ -103,6 +103,13 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
 input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--ink); border: 2px solid #000; cursor: pointer; }
 input[type=text], select { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 10px; font: 500 12px "JetBrains Mono", monospace; letter-spacing: .5px; }
 input[type=color] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); cursor: pointer; }
+/* stepper control ([−] value [+]) replacing range sliders */
+.stepper { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.step-btn { flex: 0 0 26px; width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); border-radius: 7px; cursor: pointer; font: 600 15px/1 "JetBrains Mono", monospace; }
+.step-btn:hover { border-color: #34343f; color: var(--teal); }
+.step-btn:active { background: #1c1c24; }
+.step-val { flex: 1; min-width: 0; width: 100%; text-align: center; background: var(--panel-2); border: 1px solid var(--line); color: var(--amber); border-radius: 7px; padding: 6px 4px; font: 500 12px "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.step-val::-webkit-outer-spin-button, .step-val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .chk { gap: 8px; }
 .chk input { accent-color: var(--teal); }
 .chklabel { flex: 1; font-size: 11px; color: var(--dim); cursor: pointer; }

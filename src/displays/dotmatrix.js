@@ -21,7 +21,7 @@ export default {
     { key: 'source', label: 'source', type: 'select', options: ['text', 'clock'], default: 'text', group: 'content' },
     { key: 'fill', label: 'dot fill', type: 'range', min: 20, max: 62, step: 1, default: 44, group: 'geometry' },
     { key: 'square', label: 'square pixels', type: 'toggle', default: false, group: 'geometry' },
-    { key: 'rasterH', label: 'kanji grid', type: 'range', min: 7, max: 24, step: 1, default: 11, group: 'geometry' },
+    { key: 'rasterH', label: 'kanji grid', type: 'range', min: 7, max: 44, step: 1, default: 11, group: 'geometry' },
     { key: 'color', label: 'LED color', type: 'color', default: '#dfe9ff', group: 'color' },
     { key: 'bg', label: 'background', type: 'color', default: '#070708', group: 'color' },
     { key: 'coreWhite', label: 'whiteness', type: 'range', min: 0, max: 100, step: 1, default: 78, group: 'hot core' },
