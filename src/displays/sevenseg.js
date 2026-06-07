@@ -70,7 +70,7 @@ export default {
     { key: 'color', label: 'segment', type: 'color', default: '#1bf0c8', group: 'color' },
     { key: 'bg', label: 'background', type: 'color', default: '#04100e', group: 'color' },
     { key: 'thickness', label: 'bar width', type: 'range', min: 8, max: 26, step: 1, default: 17, group: 'geometry' },
-    { key: 'gap', label: 'digit gap', type: 'range', min: 10, max: 55, step: 1, default: 28, group: 'geometry' },
+    { key: 'gap', label: 'digit gap (px)', type: 'range', min: 0, max: 24, step: 1, default: 3, group: 'geometry' },
     { key: 'glow', label: 'glow', type: 'range', min: 0, max: 34, step: 1, default: 16, group: 'glow' },
     { key: 'coreWhite', label: 'hot core', type: 'range', min: 0, max: 100, step: 1, default: 88, group: 'glow' },
     { key: 'coreThick', label: 'core width', type: 'range', min: 20, max: 90, step: 1, default: 58, group: 'glow' },
@@ -101,11 +101,11 @@ export default {
     const n = tokens.length;
     const widths = tokens.map((tk) => (tk.ch === ':' ? 0.42 : 1));
     const units = widths.reduce((a, b) => a + b, 0);
-    const aspect = 1.62, pad = Math.min(w, h) * 0.14, gapFrac = p.gap / 100;
-    let dh = h - pad * 2, dw = dh / aspect, gp = dw * gapFrac;
-    let tw = dw * units + gp * (n - 1);
+    const aspect = 1.62, pad = Math.min(w, h) * 0.1, gp = p.gap;   // gp = a few ABSOLUTE px between digits (tight, not a % of width)
+    let dh = h - pad * 2, dw = dh / aspect;
     const maxW = w - pad * 2;
-    if (tw > maxW) { const s = maxW / tw; dw *= s; dh *= s; gp = dw * gapFrac; tw = dw * units + gp * (n - 1); }
+    let tw = dw * units + gp * (n - 1);
+    if (tw > maxW) { dw = Math.max(2, (maxW - gp * (n - 1)) / units); dh = dw * aspect; tw = dw * units + gp * (n - 1); }
     const th = dw * (p.thickness / 100);
     const ghostA = p.ghost / 100, varA = p.variance / 100, dim = p.dimSeg, coreW = p.coreWhite / 100;
     let x = (w - tw) / 2;
